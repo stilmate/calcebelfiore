@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /pannello
+Sitemap: https://www.calcebelfiore.com/sitemap.xml
