@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SeoHead from '../components/SeoHead';
-import { CONFIG, PRODUCTS } from '../lib/config';
+import { CONFIG, PRODUCTS, PAVING } from '../lib/config';
 
 const CATS = ['Tutti', ...new Set(PRODUCTS.map(p => p.cat))];
 
@@ -223,6 +223,7 @@ export default function Home() {
             {['Prodotti','Ordina','Contatti'].map(s=>(
               <a key={s} href={`#${s.toLowerCase()}`} style={{fontSize:12,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'#F0EDE6',opacity:.7}}>{s}</a>
             ))}
+            <Link href={`/${PAVING.slug}`} style={{fontSize:12,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'#F0EDE6',opacity:.7}}>Pavimentazioni</Link>
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
@@ -280,6 +281,21 @@ export default function Home() {
         <div style={{textAlign:'center',marginTop:32}}>
           <Link href="/prodotti" style={{fontSize:12,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#B8860B',borderBottom:'1px solid #B8860B',paddingBottom:2}}>Vedi tutti i prodotti →</Link>
         </div>
+      </section>
+
+      <section style={{maxWidth:1100,margin:'0 auto',padding:'0 40px 68px'}}>
+        <Link href={`/${PAVING.slug}`} className="g2" style={{display:'grid',gridTemplateColumns:'1.1fr 1fr',background:'#fff',border:'1px solid #e0ddd6',overflow:'hidden'}}>
+          <div style={{padding:'34px 36px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+              <span style={{background:'#1E7A3C',color:'#fff',fontWeight:900,letterSpacing:'.12em',fontSize:11,padding:'4px 9px'}}>{PAVING.partner.toUpperCase()}</span>
+              <span style={{fontSize:11,fontWeight:800,letterSpacing:'.16em',textTransform:'uppercase',color:'#B8860B'}}>Nuova linea</span>
+            </div>
+            <h2 style={{fontFamily:'Georgia,serif',fontSize:28,fontWeight:900,marginBottom:10}}>{PAVING.title}</h2>
+            <p style={{fontSize:14,color:'#5a5652',lineHeight:1.7,marginBottom:20}}>{PAVING.subtitle}. Masselli e lastre in calcestruzzo, con sabbie di posa dalla nostra cava.</p>
+            <span style={{fontSize:12,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#B8860B',display:'inline-flex',alignItems:'center',gap:8}}>Scopri la guida alla scelta <I n="arrow" s={14}/></span>
+          </div>
+          <div aria-hidden="true" style={{minHeight:180,backgroundColor:'#cfc6b4',backgroundImage:'linear-gradient(90deg,rgba(90,80,64,.35) 2px,transparent 2px),linear-gradient(0deg,rgba(90,80,64,.35) 2px,transparent 2px),linear-gradient(135deg,#d9d0bd 0%,#bfb49e 50%,#d2c8b3 100%)',backgroundSize:'90px 45px,90px 45px,100% 100%'}}/>
+        </Link>
       </section>
 
       <div style={{height:1,background:'#d8d4cc'}}/>
