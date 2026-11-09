@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SeoHead from '../components/SeoHead';
-import { CONFIG, PRODUCTS, PAVING } from '../lib/config';
+import { CONFIG, PRODUCTS } from '../lib/config';
+import { RESALE, activeCategories } from '../lib/rivendita';
 
 const CATS = ['Tutti', ...new Set(PRODUCTS.map(p => p.cat))];
 
@@ -223,7 +224,7 @@ export default function Home() {
             {['Prodotti','Ordina','Contatti'].map(s=>(
               <a key={s} href={`#${s.toLowerCase()}`} style={{fontSize:12,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'#F0EDE6',opacity:.7}}>{s}</a>
             ))}
-            <Link href={`/${PAVING.slug}`} style={{fontSize:12,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'#F0EDE6',opacity:.7}}>Pavimentazioni</Link>
+            {RESALE.enabled&&<Link href={`/${RESALE.slug}`} style={{fontSize:12,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'#F0EDE6',opacity:.7}}>{RESALE.menuLabel}</Link>}
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
@@ -283,20 +284,31 @@ export default function Home() {
         </div>
       </section>
 
-      <section style={{maxWidth:1100,margin:'0 auto',padding:'0 40px 68px'}}>
-        <Link href={`/${PAVING.slug}`} className="g2" style={{display:'grid',gridTemplateColumns:'1.1fr 1fr',background:'#fff',border:'1px solid #e0ddd6',overflow:'hidden'}}>
-          <div style={{padding:'34px 36px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-              <span style={{background:'#1E7A3C',color:'#fff',fontWeight:900,letterSpacing:'.12em',fontSize:11,padding:'4px 9px'}}>{PAVING.partner.toUpperCase()}</span>
-              <span style={{fontSize:11,fontWeight:800,letterSpacing:'.16em',textTransform:'uppercase',color:'#B8860B'}}>Nuova linea</span>
-            </div>
-            <h2 style={{fontFamily:'Georgia,serif',fontSize:28,fontWeight:900,marginBottom:10}}>{PAVING.title}</h2>
-            <p style={{fontSize:14,color:'#5a5652',lineHeight:1.7,marginBottom:20}}>{PAVING.subtitle}. Masselli e lastre in calcestruzzo, con sabbie di posa dalla nostra cava.</p>
-            <span style={{fontSize:12,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#B8860B',display:'inline-flex',alignItems:'center',gap:8}}>Scopri la guida alla scelta <I n="arrow" s={14}/></span>
+      {activeCategories().length>0&&(
+      <section id="rivendita" style={{maxWidth:1100,margin:'0 auto',padding:'0 40px 68px'}}>
+        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginBottom:22,flexWrap:'wrap',gap:12}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:800,letterSpacing:'.18em',textTransform:'uppercase',color:'#B8860B',marginBottom:10}}>{RESALE.eyebrow}</div>
+            <h2 style={{fontFamily:'Georgia,serif',fontSize:28,fontWeight:900}}>{RESALE.title}</h2>
           </div>
-          <div aria-hidden="true" style={{minHeight:180,backgroundColor:'#cfc6b4',backgroundImage:'linear-gradient(90deg,rgba(90,80,64,.35) 2px,transparent 2px),linear-gradient(0deg,rgba(90,80,64,.35) 2px,transparent 2px),linear-gradient(135deg,#d9d0bd 0%,#bfb49e 50%,#d2c8b3 100%)',backgroundSize:'90px 45px,90px 45px,100% 100%'}}/>
-        </Link>
+          <Link href={`/${RESALE.slug}`} style={{fontSize:12,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#B8860B',borderBottom:'1px solid #B8860B',paddingBottom:2}}>Tutta la rivendita →</Link>
+        </div>
+        <div className="g3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
+          {activeCategories().slice(0,3).map(c=>(
+            <Link key={c.slug} href={`/${RESALE.slug}/${c.slug}`} style={{background:'#fff',border:'1px solid #e0ddd6',display:'flex',flexDirection:'column'}}>
+              <div aria-hidden="true" style={{height:96,position:'relative',backgroundColor:'#cfc6b4',backgroundImage:'linear-gradient(90deg,rgba(90,80,64,.35) 2px,transparent 2px),linear-gradient(0deg,rgba(90,80,64,.35) 2px,transparent 2px),linear-gradient(135deg,#d9d0bd 0%,#bfb49e 50%,#d2c8b3 100%)',backgroundSize:'70px 35px,70px 35px,100% 100%'}}>
+                {c.partner&&<span style={{position:'absolute',top:10,right:10,background:c.partner.color||'#2C2B28',color:'#fff',fontWeight:900,letterSpacing:'.12em',fontSize:10,padding:'4px 9px'}}>{c.partner.name.toUpperCase()}</span>}
+              </div>
+              <div style={{padding:'18px 20px 20px',display:'flex',flexDirection:'column',gap:8,flex:1}}>
+                <div style={{fontFamily:'Georgia,serif',fontSize:19,fontWeight:900}}>{c.name}</div>
+                <p style={{fontSize:13,color:'#5a5652',lineHeight:1.6,flex:1}}>{c.short}</p>
+                <span style={{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#B8860B',display:'inline-flex',alignItems:'center',gap:6}}>Scopri <I n="arrow" s={13}/></span>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
+      )}
 
       <div style={{height:1,background:'#d8d4cc'}}/>
 

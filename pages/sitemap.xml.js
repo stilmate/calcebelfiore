@@ -1,10 +1,12 @@
-import { CONFIG, PRODUCTS, PAVING } from '../lib/config';
+import { CONFIG, PRODUCTS } from '../lib/config';
+import { RESALE, activeCategories } from '../lib/rivendita';
 
 function Sitemap() { return null; }
 
 export async function getServerSideProps({ res }) {
   const base = CONFIG.seo.canonical;
-  const pages = ['', '/prodotti', `/${PAVING.slug}`, ...PRODUCTS.map(p=>`/prodotti/${p.slug}`)];
+  const resale = RESALE.enabled ? [`/${RESALE.slug}`, ...activeCategories().map(c=>`/${RESALE.slug}/${c.slug}`)] : [];
+  const pages = ['', '/prodotti', ...resale, ...PRODUCTS.map(p=>`/prodotti/${p.slug}`)];
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${pages.map(p=>`  <url>
