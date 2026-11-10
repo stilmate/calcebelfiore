@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /pannello
+Disallow: /accesso
+Disallow: /reimposta-password
+Disallow: /api/
 Sitemap: https://www.calcebelfiore.com/sitemap.xml

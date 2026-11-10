@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
+import Head from 'next/head';
 import SeoHead from '../components/SeoHead';
 import { CONFIG } from '../lib/config';
+import { useStaff } from '../lib/useStaff';
+import { can } from '../lib/permissions';
+import StaffShell, { primaryBtn } from '../components/StaffShell';
+import ProfilingPanel from '../components/ProfilingPanel';
 
 const I = ({ n, s = 18 }) => {
   const d = {
@@ -47,8 +53,41 @@ function AddNote({ onAdd }) {
   );
 }
 
+// Accesso: solo operatori collegati, attivi e con almeno un processo visibile.
 export default function Pannello() {
-  const [tab, setTab] = useState('orders');
+  const auth = useStaff();
+  const router = useRouter();
+  useEffect(() => { if (auth.status === 'signedOut') router.replace('/accesso'); }, [auth.status, router]);
+
+  if (auth.status === 'unconfigured') return (
+    <StaffShell title="Pannello operatore">
+      <p style={{fontSize:14,color:'#5a5652',lineHeight:1.7}}>Il pannello è protetto e l&apos;accesso non è ancora attivo: manca il collegamento al database degli utenti. Le istruzioni sono in <strong>supabase/PROFILAZIONE.md</strong>.</p>
+    </StaffShell>
+  );
+  if (auth.status === 'loading' || auth.status === 'signedOut') return (
+    <StaffShell title="Pannello operatore"><p style={{fontSize:14,color:'#5a5652'}}>Verifica dell&apos;accesso…</p></StaffShell>
+  );
+  if (auth.status !== 'ready') return (
+    <StaffShell title="Accesso non abilitato">
+      <p style={{fontSize:14,color:'#5a5652',lineHeight:1.7,marginBottom:18}}>
+        {auth.status === 'inactive' ? 'Il tuo account è stato disattivato.' : 'Il tuo account non ha ancora un profilo assegnato.'} Contatta un amministratore.
+      </p>
+      <button onClick={auth.signOut} style={primaryBtn}>Esci</button>
+    </StaffShell>
+  );
+  return <PannelloOperatore auth={auth}/>;
+}
+
+// Scheda del pannello → processo (modulo) che ne regola l'accesso
+const TAB_MODULE = { orders:'ordini', warehouse:'magazzino', tickets:'assistenza', tasks:'attivita', leads:'lead', clients:'clienti', users:'utenti' };
+
+function PannelloOperatore({ auth }) {
+  const P = auth.permissions;
+  const canRead = (m) => can(P, m, 'read');
+  const canWrite = (m) => can(P, m, 'write');
+  const author = auth.staff?.full_name || 'Operatore';
+  const firstTab = Object.keys(TAB_MODULE).find(t => canRead(TAB_MODULE[t])) || null;
+  const [tab, setTab] = useState(firstTab);
   const [sel, setSel] = useState(null);
   const [orders, setOrders] = useStorage('cb_orders', []);
   const [leads, setLeads] = useStorage('cb_leads', []);
@@ -82,13 +121,16 @@ export default function Pannello() {
   orders.forEach(o => ac(o,'orders')); leads.forEach(l => ac(l,'leads')); tickets.forEach(t => ac(t,'tickets'));
   const clients = Object.values(cm);
 
+  const toPrepare = orders.filter(o=>o.status==='Ricevuto'||o.status==='In preparazione').length;
   const tabs = [
     {id:'orders',  label:`Ordini (${orders.length})`},
+    {id:'warehouse', label:`Magazzino (${toPrepare} da preparare)`},
     {id:'tickets', label:`Assistenza (${openTix > 0 ? openTix+' aperti' : tickets.length})`, dot: openTix > 0},
     {id:'tasks',   label:`Attività (${pendTasks})`, dot: overdue > 0},
     {id:'leads',   label:`Lead (${leads.length})`},
     {id:'clients', label:`Clienti 360° (${clients.length})`},
-  ];
+    {id:'users',   label:'Utenti e profili'},
+  ].filter(t => canRead(TAB_MODULE[t.id]));
 
   const lbl = {fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'#7A7672',display:'block',marginBottom:5};
   const inp = {width:'100%',padding:'10px 14px',border:'1.5px solid #d0cdc6',fontSize:13,fontFamily:'inherit',outline:'none',background:'#fff'};
@@ -97,6 +139,7 @@ export default function Pannello() {
   return (
     <>
       <SeoHead title={`Pannello Operatore | ${CONFIG.company.name}`} description="Pannello operatore interno"/>
+      <Head><meta name="robots" content="noindex, nofollow"/></Head>
       <style>{`*{box-sizing:border-box;margin:0;padding:0;}body{font-family:system-ui,-apple-system,sans-serif;background:#F0EDE6;color:#2C2B28;}a{color:inherit;text-decoration:none;}`}</style>
 
       <nav style={{position:'sticky',top:0,zIndex:200,background:'#2C2B28',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 28px',height:56}}>
@@ -104,7 +147,10 @@ export default function Pannello() {
           <Link href="/" style={{fontFamily:'Georgia,serif',fontWeight:900,fontSize:15,color:'#F0EDE6'}}>BELFIORE <span style={{color:'#B8860B'}}>·</span></Link>
           <span style={{fontSize:11,fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'#B8860B'}}>Pannello operatore</span>
         </div>
-        <Link href="/" style={{fontSize:11,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',color:'#F0EDE6',opacity:.7}}>← Sito pubblico</Link>
+        <div style={{display:'flex',alignItems:'center',gap:16}}>
+          <span style={{fontSize:12,color:'#F0EDE6'}}>{author} <span style={{color:'#B8860B',fontWeight:700}}>· {auth.staff?.role?.name}</span></span>
+          <button onClick={auth.signOut} style={{background:'none',border:'1px solid rgba(240,237,230,.4)',color:'#F0EDE6',cursor:'pointer',fontSize:11,fontWeight:700,letterSpacing:'.09em',textTransform:'uppercase',padding:'6px 12px'}}>Esci</button>
+        </div>
       </nav>
 
       <div style={{maxWidth:1200,margin:'0 auto',padding:'40px 28px'}}>
@@ -114,14 +160,15 @@ export default function Pannello() {
         </div>
 
         {/* KPI */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:32}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:12,marginBottom:32}}>
           {[
-            {l:'Ordini attivi', v:orders.filter(o=>o.status!=='Consegnato').length, n:'cart', c:'#2C2B28'},
-            {l:'Ticket aperti', v:openTix, n:'ticket', c:openTix>0?'#c0392b':'#4a7c59'},
-            {l:'Attività scadute', v:overdue, n:'warning', c:overdue>0?'#c47c1a':'#7A7672'},
-            {l:'Lead nuovi', v:leads.filter(l=>l.status==='Nuovo').length, n:'user', c:'#B8860B'},
-            {l:'Clienti', v:clients.length, n:'star', c:'#2C2B28'},
-          ].map(({l,v,n,c})=>(
+            {m:'ordini', l:'Ordini attivi', v:orders.filter(o=>o.status!=='Consegnato').length, n:'cart', c:'#2C2B28'},
+            {m:'magazzino', l:'Da preparare', v:toPrepare, n:'cart', c:toPrepare>0?'#c47c1a':'#7A7672'},
+            {m:'assistenza', l:'Ticket aperti', v:openTix, n:'ticket', c:openTix>0?'#c0392b':'#4a7c59'},
+            {m:'attivita', l:'Attività scadute', v:overdue, n:'warning', c:overdue>0?'#c47c1a':'#7A7672'},
+            {m:'lead', l:'Lead nuovi', v:leads.filter(l=>l.status==='Nuovo').length, n:'user', c:'#B8860B'},
+            {m:'clienti', l:'Clienti', v:clients.length, n:'star', c:'#2C2B28'},
+          ].filter(k=>canRead(k.m)).map(({l,v,n,c})=>(
             <div key={l} style={{background:'#fff',border:'1px solid #e0ddd6',padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
               <span style={{color:c}}><I n={n} s={22}/></span>
               <div>
@@ -155,11 +202,11 @@ export default function Pannello() {
                     {o.isVip && <span style={{background:'#B8860B',color:'#fff',padding:'2px 8px',fontSize:10,fontWeight:800,display:'inline-flex',alignItems:'center',gap:4,marginTop:6}}><I n="crown" s={11}/>VIP</span>}
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-                    <select style={{...ss,background:OC[o.status]||'#2C2B28'}} value={o.status} onChange={e=>patchOrder(o.id,{status:e.target.value})}>
+                    <select disabled={!canWrite('ordini')} style={{...ss,background:OC[o.status]||'#2C2B28',opacity:canWrite('ordini')?1:.75,cursor:canWrite('ordini')?'pointer':'default'}} value={o.status} onChange={e=>patchOrder(o.id,{status:e.target.value})}>
                       {['Ricevuto','In preparazione','Pronto','Consegnato'].map(s=><option key={s}>{s}</option>)}
                     </select>
                     <button onClick={()=>setSel(sel===o.id?null:o.id)} style={{background:'none',border:'1.5px solid #d0cdc6',cursor:'pointer',padding:'6px 10px',display:'flex',alignItems:'center',color:'#2C2B28'}}><I n="eye" s={16}/></button>
-                    <button onClick={()=>{setTickets(prev=>[{id:`TKT-${Date.now()}`,orderId:o.id,name:o.name,company:o.company,phone:o.phone,type:'Generico',desc:'',priority:'Normale',status:'Aperto',createdAt:new Date().toLocaleString('it-IT'),notes:[]},...prev]);setTab('tickets');showToast('Ticket creato');}} style={{background:'none',border:'1.5px solid #d0cdc6',cursor:'pointer',padding:'6px 10px',display:'flex',alignItems:'center',color:'#2C2B28'}}><I n="ticket" s={16}/></button>
+                    {canWrite('assistenza')&&<button title="Apri ticket" onClick={()=>{setTickets(prev=>[{id:`TKT-${Date.now()}`,orderId:o.id,name:o.name,company:o.company,phone:o.phone,type:'Generico',desc:'',priority:'Normale',status:'Aperto',createdAt:new Date().toLocaleString('it-IT'),notes:[]},...prev]);setTab('tickets');showToast('Ticket creato');}} style={{background:'none',border:'1.5px solid #d0cdc6',cursor:'pointer',padding:'6px 10px',display:'flex',alignItems:'center',color:'#2C2B28'}}><I n="ticket" s={16}/></button>}
                   </div>
                 </div>
                 {sel===o.id && (
@@ -182,7 +229,7 @@ export default function Pannello() {
         {/* TICKETS */}
         {tab==='tickets' && (
           <div>
-            <NewTicket onAdd={t=>{setTickets(prev=>[t,...prev]);showToast('Ticket aperto');}} config={CONFIG}/>
+            {canWrite('assistenza')&&<NewTicket onAdd={t=>{setTickets(prev=>[t,...prev]);showToast('Ticket aperto');}} config={CONFIG}/>}
             <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:18}}>
               {tickets.length===0 ? <Empty n="ticket" t="Nessun ticket di assistenza"/> : tickets.map(t=>(
                 <div key={t.id} style={{background:'#fff',border:'1px solid #e0ddd6',padding:'16px 20px',borderLeft:`3px solid ${TC[t.status]||'#ccc'}`}}>
@@ -197,7 +244,7 @@ export default function Pannello() {
                       {t.desc&&<div style={{fontSize:12,color:'#5a5652',marginTop:5,fontStyle:'italic'}}>"{t.desc}"</div>}
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <select style={{...ss,background:TC[t.status]||'#2C2B28'}} value={t.status} onChange={e=>patchTicket(t.id,{status:e.target.value})}>
+                      <select disabled={!canWrite('assistenza')} style={{...ss,background:TC[t.status]||'#2C2B28',opacity:canWrite('assistenza')?1:.75}} value={t.status} onChange={e=>patchTicket(t.id,{status:e.target.value})}>
                         {['Aperto','In lavorazione','In attesa cliente','Risolto'].map(s=><option key={s}>{s}</option>)}
                       </select>
                       <button onClick={()=>setSel(sel===t.id?null:t.id)} style={{background:'none',border:'1.5px solid #d0cdc6',cursor:'pointer',padding:'6px 10px',display:'flex',color:'#2C2B28'}}><I n="eye" s={16}/></button>
@@ -211,7 +258,7 @@ export default function Pannello() {
                           {note.text}
                         </div>
                       ))}
-                      <AddNote onAdd={txt=>patchTicket(t.id,{notes:[...(t.notes||[]),{text:txt,author:'Operatore',date:new Date().toLocaleString('it-IT')}]})}/>
+                      {canWrite('assistenza')&&<AddNote onAdd={txt=>patchTicket(t.id,{notes:[...(t.notes||[]),{text:txt,author,date:new Date().toLocaleString('it-IT')}]})}/>}
                     </div>
                   )}
                 </div>
@@ -223,14 +270,14 @@ export default function Pannello() {
         {/* TASKS */}
         {tab==='tasks' && (
           <div>
-            <NewTask onAdd={t=>{setTasks(prev=>[t,...prev]);showToast('Attività aggiunta');}} config={CONFIG}/>
+            {canWrite('attivita')&&<NewTask onAdd={t=>{setTasks(prev=>[t,...prev]);showToast('Attività aggiunta');}} config={CONFIG}/>}
             <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:18}}>
               {tasks.length===0 ? <Empty n="task" t="Nessuna attività"/> :
                 [...tasks].sort((a,b)=>{if(a.done!==b.done)return a.done?1:-1;if(a.dueDate&&b.dueDate)return new Date(a.dueDate)-new Date(b.dueDate);return 0;}).map(t=>{
                   const ov = !t.done&&t.dueDate&&new Date(t.dueDate)<new Date();
                   return (
                     <div key={t.id} style={{background:'#fff',border:'1px solid #e0ddd6',padding:'12px 18px',display:'flex',alignItems:'center',gap:12,opacity:t.done?.6:1,borderLeft:`3px solid ${ov?'#c0392b':t.done?'#4a7c59':'#d0cdc6'}`}}>
-                      <input type="checkbox" checked={t.done||false} onChange={e=>patchTask(t.id,{done:e.target.checked})} style={{width:17,height:17,accentColor:'#B8860B',cursor:'pointer',flexShrink:0}}/>
+                      <input type="checkbox" disabled={!canWrite('attivita')} checked={t.done||false} onChange={e=>patchTask(t.id,{done:e.target.checked})} style={{width:17,height:17,accentColor:'#B8860B',cursor:'pointer',flexShrink:0}}/>
                       <div style={{flex:1}}>
                         <div style={{fontSize:13,fontWeight:t.done?400:700,textDecoration:t.done?'line-through':'none',color:t.done?'#7A7672':'#2C2B28'}}>{t.title}</div>
                         <div style={{display:'flex',gap:14,marginTop:3,flexWrap:'wrap'}}>
@@ -239,7 +286,7 @@ export default function Pannello() {
                           {t.type&&<span style={{fontSize:11,background:'#F0EDE6',padding:'1px 7px',color:'#7A7672'}}>{t.type}</span>}
                         </div>
                       </div>
-                      <button onClick={()=>delTask(t.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#7A7672',display:'flex'}}><I n="x" s={15}/></button>
+                      {canWrite('attivita')&&<button title="Elimina attività" onClick={()=>delTask(t.id)} style={{background:'none',border:'none',cursor:'pointer',color:'#7A7672',display:'flex'}}><I n="x" s={15}/></button>}
                     </div>
                   );
                 })
@@ -261,16 +308,45 @@ export default function Pannello() {
                     <div style={{marginTop:6,fontSize:12,color:'#5a5652',fontStyle:'italic'}}>"{l.type}"{l.message?` — ${l.message}`:''}</div>
                   </div>
                   <div style={{display:'flex',alignItems:'flex-start',gap:8}}>
-                    <select style={{...ss,background:LC[l.status]||'#2C2B28'}} value={l.status} onChange={e=>patchLead(l.id,{status:e.target.value})}>
+                    <select disabled={!canWrite('lead')} style={{...ss,background:LC[l.status]||'#2C2B28',opacity:canWrite('lead')?1:.75}} value={l.status} onChange={e=>patchLead(l.id,{status:e.target.value})}>
                       {['Nuovo','Contattato','Chiuso'].map(s=><option key={s}>{s}</option>)}
                     </select>
-                    <button onClick={()=>{const d=new Date();d.setDate(d.getDate()+1);setTasks(prev=>[{id:`TSK-${Date.now()}`,title:`Follow-up ${l.name}`,client:l.company||l.name,type:'Follow-up lead',dueDate:d.toISOString().split('T')[0],done:false},...prev]);setTab('tasks');showToast('Attività follow-up creata');}} style={{background:'none',border:'1.5px solid #d0cdc6',cursor:'pointer',padding:'6px 10px',display:'flex',color:'#2C2B28'}}><I n="task" s={16}/></button>
+                    {canWrite('attivita')&&<button title="Crea follow-up" onClick={()=>{const d=new Date();d.setDate(d.getDate()+1);setTasks(prev=>[{id:`TSK-${Date.now()}`,title:`Follow-up ${l.name}`,client:l.company||l.name,type:'Follow-up lead',dueDate:d.toISOString().split('T')[0],done:false},...prev]);setTab(canRead('attivita')?'tasks':tab);showToast('Attività follow-up creata');}} style={{background:'none',border:'1.5px solid #d0cdc6',cursor:'pointer',padding:'6px 10px',display:'flex',color:'#2C2B28'}}><I n="task" s={16}/></button>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* MAGAZZINO — ordini da preparare, stessa base dati degli ordini */}
+        {tab==='warehouse' && (
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {orders.filter(o=>o.status!=='Consegnato').length===0 ? <Empty n="cart" t="Nessun ordine da preparare"/> :
+              orders.filter(o=>o.status!=='Consegnato').sort((a,b)=>(b.isVip?1:0)-(a.isVip?1:0)).map(o=>(
+              <div key={o.id} style={{background:'#fff',border:'1px solid #e0ddd6',padding:'16px 20px',borderLeft:`3px solid ${o.isVip?'#B8860B':OC[o.status]||'#d0cdc6'}`}}>
+                <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+                  <div>
+                    <div style={{fontWeight:800,fontSize:14}}>{o.company||o.name} {o.isVip&&<span style={{background:'#B8860B',color:'#fff',padding:'2px 8px',fontSize:10,fontWeight:800,marginLeft:6}}>VIP</span>}</div>
+                    <div style={{fontSize:11,color:'#7A7672',marginTop:2}}>{o.id} · {o.createdAt} · {o.delivery==='consegna'?'Consegna a cantiere':'Ritiro in sede'}</div>
+                  </div>
+                  <select disabled={!canWrite('magazzino')} style={{...ss,background:OC[o.status]||'#2C2B28',opacity:canWrite('magazzino')?1:.75}} value={o.status} onChange={e=>patchOrder(o.id,{status:e.target.value})}>
+                    {['Ricevuto','In preparazione','Pronto','Consegnato'].map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div style={{marginTop:10,display:'flex',flexWrap:'wrap',gap:8}}>
+                  {o.items?.map(it=>(<span key={it.id} style={{fontSize:12,background:'#F0EDE6',border:'1px solid #ddd9d0',padding:'4px 10px'}}><strong>{it.qty}</strong> × {it.name}</span>))}
+                </div>
+                {o.note && <div style={{marginTop:8,fontSize:12,color:'#5a5652'}}>Note: {o.note}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* UTENTI E PROFILI */}
+        {tab==='users' && <ProfilingPanel canEdit={canWrite('utenti')} currentUserId={auth.staff?.user_id} onSelfChange={auth.reload}/>}
+
+        {!tab && <Empty n="warning" t="Il tuo profilo non dà accesso a nessuna sezione. Contatta un amministratore."/>}
 
         {/* CLIENTS 360 */}
         {tab==='clients' && (
