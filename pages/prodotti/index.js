@@ -7,7 +7,7 @@ export default function CatalogPage() {
     <>
       <SeoHead
         title={`Catalogo Prodotti | ${CONFIG.seo.titleSuffix}`}
-        description="Scopri tutta la gamma di prodotti Calce Belfiore: grassello di calce, intonaci premiscelati, sabbie selezionate e conglomerato bituminoso. Ordina online."
+        description="Scopri tutta la gamma di prodotti Belfiore: grassello di calce, intonaci premiscelati, sabbie selezionate e conglomerato bituminoso. Ordina online."
         keywords={CONFIG.seo.keywords}
       />
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:system-ui,-apple-system,sans-serif;background:#F0EDE6;color:#2C2B28;}`}</style>

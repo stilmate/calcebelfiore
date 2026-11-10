@@ -1,5 +1,5 @@
 -- ╔══════════════════════════════════════════════════════════════════╗
--- ║  PROFILAZIONE PANNELLO OPERATORE — Calce Belfiore                 ║
+-- ║  PROFILAZIONE PANNELLO OPERATORE — Belfiore                 ║
 -- ║  Da eseguire una volta in Supabase → SQL Editor → New query.      ║
 -- ║  Si può rieseguire: non duplica né cancella dati esistenti.       ║
 -- ╚══════════════════════════════════════════════════════════════════╝
@@ -74,6 +74,12 @@ create trigger roles_touch before update on public.roles
   for each row execute function public.touch_updated_at();
 
 -- ─────────────────────────────────────────────── REGOLE DI ACCESSO (RLS)
+-- Le tabelle sono raggiungibili solo da utenti collegati; cosa vedono e modificano
+-- lo decidono le regole qui sotto. I visitatori anonimi non hanno alcun accesso.
+revoke all on public.roles, public.staff from anon;
+grant select, insert, update, delete on public.roles to authenticated;
+grant select, update on public.staff to authenticated;
+
 alter table public.roles enable row level security;
 alter table public.staff enable row level security;
 

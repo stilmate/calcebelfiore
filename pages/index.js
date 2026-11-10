@@ -238,7 +238,7 @@ export default function Home() {
 
       <section id="hero" style={{position:'relative',minHeight:'88vh',display:'flex',alignItems:'center',overflow:'hidden'}}>
         <div style={{position:'absolute',inset:0,zIndex:0}}>
-          <img src={CONFIG.images.hero} alt="Cantiere edile Calce Belfiore Calabria" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+          <img src={CONFIG.images.hero} alt="Cantiere edile Belfiore Calabria" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
           <div style={{position:'absolute',inset:0,background:'linear-gradient(105deg,rgba(28,27,25,0.91) 0%,rgba(28,27,25,0.72) 55%,rgba(28,27,25,0.45) 100%)'}}/>
           <div style={{position:'absolute',right:0,top:0,width:'50%',height:'100%',background:'radial-gradient(ellipse at 80% 30%,rgba(184,134,11,0.18) 0%,transparent 65%)'}}/>
         </div>
